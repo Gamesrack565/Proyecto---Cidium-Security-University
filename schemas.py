@@ -1,7 +1,10 @@
+#schemas.py
+#Este módulo se encarga de definir los esquemas de datos utilizando Pydantic para lavalidación y serialización de datos en la aplicación.
+
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import date, datetime
-from uuid import UUID # <-- Importación necesaria para la nueva base de datos
+from uuid import UUID 
 
 # --- Módulo de Administrador ---
 class ReporteActivosResponse(BaseModel):
@@ -68,8 +71,36 @@ class AlumnoMeResponse(BaseModel):
 class PagoDetalle(BaseModel):
     fecha: date
     descripcion: str
-    monto: float
+    monto_total: float    
+    monto_pagado: float   
+    estatus: str         
 
 class AlumnoPagosResponse(BaseModel):
     id_alumno: UUID  # Actualizado a UUID
     pagos: List[PagoDetalle]
+
+
+# --- Agregado para el Módulo de Administrador ---
+class AlumnoLista(BaseModel):
+    id: UUID
+    name: str
+    email: str
+    student_code: str
+    enrollment_status: str
+
+class AdminAlumnosResponse(BaseModel):
+    alumnos: List[AlumnoLista]
+
+# --- Agregado para Creación (CRUD) ---
+class AlumnoCreate(BaseModel):
+    username: str
+    email: str
+    password: str
+    name: str
+    student_code: str
+    course_level: str
+
+class CargoCreate(BaseModel):
+    concept: str
+    amount: float
+    due_date: date

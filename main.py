@@ -8,7 +8,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configuración de CORS
+#Configuración de CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
@@ -21,4 +21,4 @@ app.include_router(router)
 
 @app.get("/health", tags=["System"])
 def check_system_health():
-    return {"status": "ok", "message": "API Campus Online operativa"}
+    return {"status": "ok", "message": "API EduCore operativa"}
