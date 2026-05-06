@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from router import router
+from pagos_mp import router_pagos     
 
 app = FastAPI(
     title="EduCore MVP",
@@ -18,6 +19,7 @@ app.add_middleware(
 )
 
 app.include_router(router)
+app.include_router(router_pagos) 
 
 @app.get("/health", tags=["System"])
 def check_system_health():
