@@ -275,20 +275,19 @@ Usando la estructura de tablas del diagrama ER, el flujo correcto al recibir un 
 |4|Faltan endpoints de retorno|Medio — frontend no sabe que paginas crear|Sin resolver|Agregar a Endpoints.docx|
 
 ---
-
+ 
 # 6. Resumen de requerimientos por equipo
 
-|Area|Que necesita entregar| Prioridad| 
-|-|-|-|
-|Base de datos|Confirmar uso de PAYMENT_STUDENTS para registrar pagos MP|Alta|
-|Base de datos|Exponer campo external_reference para guardar payment_id|Alta|
-|Endpoints|Actualizar nombre: /api/pagos/crear|Alta|
-|Endpoints|Corregir request body (email, monto, descripción)|Alta|
-|Endpoints|Agregar /success, /failure y /pending|Alta|
-|Frontend|Botón que llame a POST /api/pagos/crear|Alta|
-|Frontend|Enviar email, monto y descripción (sin datos de tarjeta)|Alta|
-|Frontend|Redirigir al alumno al init_point recibido|Alta|
-|Frontend|Crear páginas /success, /failure y /pending|Alta|
-|Frontend|Confirmar si usar Stripe o MercadoPago con Alan|Alta|
-
-Dale formato por favor 
+| Área | Qué necesita entregar | Prioridad |
+|---|---|---|
+| Base de datos | Confirmar uso de PAYMENT_STUDENTS para registrar pagos MP | Alta |
+| Base de datos | Exponer campo external_reference para guardar payment_id | Alta |
+| Endpoints | Actualizar nombre: /api/pagos/crear | Alta |
+| Endpoints | Corregir request body (email, monto, descripción) | Alta |
+| Endpoints | Agregar /success, /failure y /pending | Alta |
+| Frontend | Botón que llame a POST /api/pagos/crear | Alta |
+| Frontend | Enviar email, monto y descripción (sin datos de tarjeta) | Alta |
+| Frontend | Redirigir al alumno al init_point recibido | Alta |
+| Frontend | Crear páginas /success, /failure y /pending | Alta |
+| Frontend | Confirmar si usar Stripe o MercadoPago con Alan | Alta |
+---
