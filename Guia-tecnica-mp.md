@@ -41,12 +41,9 @@ El servidor en vivo se encuentra alojado en un Space configurado con Docker.
 
 1. **Configuración del Dockerfile:** Se instruye a Hugging Face para construir la imagen instalando las dependencias del archivo `requirements.txt` y exponiendo el puerto `7860`, requerido estrictamente por la plataforma.
 2. **Protección de Credenciales (Secrets):** Para evitar la exposición del archivo `.env` en un repositorio público, las credenciales de Azure se inyectaron directamente en la configuración del Space en Hugging Face.
-
-> **[INSERTA AQUÍ IMAGEN DE: Captura de pantalla de la sección "Variables and secrets" en los Settings de Hugging Face]**
-
 3. **Verificación de Salud:** Una vez que el contenedor marca "Running", se accede al endpoint de salud para confirmar la conexión.
 
-> **[INSERTA AQUÍ IMAGEN DE: Captura de pantalla de la respuesta GET /health devolviendo {"status": "ok"}]**
+<img width="303" height="73" alt="Screenshot_20260513_2324181" src="https://github.com/user-attachments/assets/6bc42d32-65cc-4954-ac18-95cd70ae6dd4" />
 
 ---
 
@@ -81,7 +78,8 @@ El flujo de seguridad funciona así:
 
 La API cuenta con documentación autogenerada bajo el estándar OpenAPI (Swagger UI). 
 
-> **[INSERTA AQUÍ IMAGEN DE: image_bf285c.png - Captura general del Swagger mostrando todas las categorías (Authentication, Admin Reports, Admin Operations, Student Portal, Pagos MercadoPago)]**
+<img width="413" height="417" alt="Screenshot_20260513_2325381" src="https://github.com/user-attachments/assets/1dab7313-ea21-4da0-8810-522099a2d22b" />
+
 
 ### 3.1 Autenticación y Sistema
 El endpoint `/api/auth/login` es la puerta de entrada. Trabaja bajo el estándar **OAuth2 con Password Flow**.
@@ -100,6 +98,9 @@ El endpoint `/api/auth/login` es la puerta de entrada. Trabaja bajo el estándar
 | POST | `/api/auth/login` | `x-www-form-urlencoded` | Valida credenciales y devuelve el Token JWT. |
 | POST | `/api/auth/logout` | `Authorization: Bearer` | Invalida la sesión actual del usuario. |
 
+<img width="411" height="158" alt="Screenshot_20260513_2329041" src="https://github.com/user-attachments/assets/e525e67b-814f-4187-a4d3-5a15165353ef" />
+
+
 ### 3.2 Operaciones de Administrador
 Este módulo utiliza **SQL Agregado** para generar inteligencia de negocio en tiempo real.
 
@@ -116,6 +117,9 @@ Este módulo utiliza **SQL Agregado** para generar inteligencia de negocio en ti
 | POST | `/api/admin/estudiantes` | `{ username, email, password... }` | Registra un alumno y crea su perfil académico. |
 | POST | `/api/admin/cargos` | `{ concept, amount, due_date }` | Crea un concepto de cobro y lo asigna a todos los alumnos activos. |
 
+<img width="765" height="218" alt="Screenshot_20260513_2328391" src="https://github.com/user-attachments/assets/2088fd3c-7f99-4ecd-a739-869b6e294cfa" />
+
+
 ### 3.3 Portal del Estudiante
 Los endpoints de este módulo filtran la información basándose en el **ID del token**.
 - Al llamar a `/api/estudiantes/me/pagos`, la consulta SQL hace un `JOIN` entre `charges` y `payment_students` usando el `user_id` del token. Esto garantiza que un alumno **nunca** pueda ver la deuda de otro, incluso si intenta manipular la URL.
@@ -126,6 +130,9 @@ Los endpoints de este módulo filtran la información basándose en el **ID del 
 |---|---|---|
 | GET | `/api/estudiantes/me` | Devuelve el nombre, curso y estado del alumno logueado. |
 | GET | `/api/estudiantes/me/pagos` | Cruza las tablas para devolver el historial de deudas, fechas límite y estatus de pago del alumno. |
+
+<img width="594" height="168" alt="Screenshot_20260513_2329341" src="https://github.com/user-attachments/assets/13e189a8-3099-4f1a-9a79-53f3353fc45b" />
+
 
 ### 3.4 Módulo de Pagos (MercadoPago)
 La lógica de pagos es el corazón financiero del sistema.
@@ -150,7 +157,7 @@ La lógica de pagos es el corazón financiero del sistema.
 | GET | `/api/pagos/pending` | Maneja la redirección cuando un pago queda en proceso (Oxxo, transferencia tardía). |
 | GET | `/api/pagos/historial` | Consulta la BD y devuelve el historial de pagos concretados del alumno. |
 
-> **[INSERTA AQUÍ IMAGEN DE: image_703ab6.png - Captura enfocada exclusivamente en la sección "Pagos MercadoPago" del Swagger]**
+<img width="502" height="328" alt="Screenshot_20260513_2326191" src="https://github.com/user-attachments/assets/c3f4a65c-ea89-4190-9dbe-51af714f0660" />
 
 ---
 
@@ -184,7 +191,7 @@ El despliegue en **Hugging Face Spaces** utiliza tecnología de contenedores (Do
 **Gestión de Secretos:**
 Las variables sensibles como `DB_PASSWORD` y `SECRET_KEY` no se suben al código. Se configuran en el panel de control de Hugging Face como **Secretos de Entorno**, los cuales son inyectados al contenedor en tiempo de ejecución.
 
-> **[INSERTA AQUÍ IMAGEN DE: Captura de pantalla de la sección "Variables and secrets" en Hugging Face]**
+<img width="700" height="537" alt="Screenshot_20260513_2323191" src="https://github.com/user-attachments/assets/f9b7cb66-e09f-45c3-8b35-8837a156aa0f" />
 
 ## 6. Gestión de Errores y Glosario Técnico
 
