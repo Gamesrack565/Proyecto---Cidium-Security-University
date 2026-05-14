@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from router import router
-from pagos_mp import router_pagos     
+from Endpoints.router import router
+from Sistema_pagos.pagos_mp import router_pagos     
 
 app = FastAPI(
     title="EduCore MVP",

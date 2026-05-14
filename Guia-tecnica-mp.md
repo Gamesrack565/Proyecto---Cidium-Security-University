@@ -1,293 +1,233 @@
-# Manual Técnico: Integración de Pagos con MercadoPago
+# Manual Técnico: Backend API REST y Despliegue en la Nube (EduCore MVP)
 
 ## Índice
-* [1. Proceso completo de implementación](#1-proceso-completo-de-implementación)
-* [2. Explicación del código Python](#2-explicación-del-código-python)
-* [3. Requerimientos de Base de Datos](#3-requerimientos-de-base-de-datos)
-* [4. Requerimientos de Frontend](#4-requerimientos-de-frontend)
-* [5. Análisis de integración con los demás equipos](#5-análisis-de-integración-con-los-demás-equipos)
+* [Resumen ejecutivo y vision del sistema](#resumen-ejecutivo-y-visión-del-sistema)
+* [1. Arquitectura y Proceso de Despliegue](#1-arquitectura-y-proceso-de-despliegue)
+* [2. Explicación de la Estructura del Código](#2-explicación-de-la-estructura-del-código)
+* [3. Resumen de Endpoints de la API](#3-resumen-de-endpoints-de-la-api)
+* [4. Requerimientos de Base de Datos](#4-requerimientos-de-base-de-datos)
+* [5. Configuración de Infraestructura y Despliegue](#5.-configuración-de-infraestructura-y-despliegue)
+* [6. Gestión de Errores y Glosario Técnico](#6.-gestión-de-errores-y-glosario-técnico)
+* [7. Requerimientos y Conexión con Frontend](#7.-requerimientos-y-conexión-con-frontend)
+* [8. Análisis de Integración y Discrepancias](#8.-análisis-de-integración-y-discrepancias)
 
 ---
 
-## 1. Proceso completo de implementación
+## Resumen Ejecutivo y Visión del Sistema
 
-Para realizar la demo de pagos con MercadoPago se siguieron los siguientes pasos:
+EduCore MVP es una plataforma robusta de gestión académica y financiera. El backend ha sido diseñado bajo los principios de **escalabilidad vertical** y **seguridad por diseño**. La API actúa como el orquestador central que comunica la interfaz de usuario (React) con los servicios de datos en Azure y los servicios financieros de MercadoPago.
 
-### 1.1 Creación de la cuenta en MercadoPago Developers
-Se accede al portal de desarrolladores y se creó la aplicación Campus Online:
-
-|Dato| Valor|
-|----|------|
-|Nombre de la aplicacion|Campus online|
-|Numero de la aplicacion| 4552392274773713|
-|Tipo de integracion| Checkout Pro|
-|Pais |Mexico (MXN)|
-
-### 1.2 Creación de dos cuentas de prueba
-**Regla de MercadoPago en sandbox:**
-Si intentamos pagar con la misma cuenta con la que se genera el cobro, MercadoPago mostrará el error: *"Una de las partes con la que intentas hacer el pago es de prueba"*. Por eso es que necesitamos crear dos cuentas TEST separadas.
-
-|Cuenta | Tipo | Saldo Ficticio | Para que se usa|
-|-----|----|----|----|
-|Test-Vendedor| Vendedor | $1000 MXN | Genera los cobros. Su Access Token se usa en el código Python.|
-|Test-Comprador| Comprador | $5000 MXN | Simula al alumno que realiza el pago en el checkout.|
-
-### 1.3 Creación de cuentas de prueba paso a paso
-
-1. **Entrar a la aplicación:** Nos dirigimos al enlace `mercadopago.com.mx/developers`, hacemos clic en "Tus integraciones" y seleccionamos Campus Online.
-<img width="974" height="312" alt="1" src="https://github.com/user-attachments/assets/16ce7694-6b4d-4803-a536-1089facf2227" />
-
-2. **Crear cuenta Vendedor:** En la pestaña "Cuentas de prueba", hacemos clic en "Crear cuenta". Tipo: Vendedor, saldo: $1,000. Guardar usuario y contraseña generados.
-<img width="315" height="412" alt="2" src="https://github.com/user-attachments/assets/443e7de3-e1d3-49ec-a408-dac88e1814b2" />
-<img width="976" height="319" alt="3" src="https://github.com/user-attachments/assets/af167163-6a93-4f8c-a17c-589c7eeb34e3" />
-
-3. **Crear cuenta Comprador:** Repetimos el proceso con la cuenta de Tipo: Comprador, y le agregamos un saldo: $5,000.
-<img width="653" height="410" alt="4" src="https://github.com/user-attachments/assets/283f6017-e419-4263-b05a-97eeb4006cd3" />
-<img width="812" height="267" alt="5" src="https://github.com/user-attachments/assets/4608956f-87e1-41a3-929b-b5d6cd697a18" />
-
-4. **Obtener Access Token del vendedor:** Iniciamos sesión en la ruta developer de la página de Mercado Pago con la cuenta TEST-vendedor en una ventana incógnita. Nos dirigimos a la pestaña de "Credenciales de prueba" y copiamos el token Access Token TEST.
-
-<img width="822" height="415" alt="6" src="https://github.com/user-attachments/assets/b216d982-1d9a-44fe-83f6-19a65db0a208" />
-
-### 1.4 Cómo se realizó el pago de prueba
-**1.4.1 Ejecutamos nuestro script de Python**
-Para ello usamos el siguiente comando:
-```bash
-uvicorn fastAPI:app --reload
-```
-<img width="976" height="194" alt="7" src="https://github.com/user-attachments/assets/b1a8e02b-d953-4697-ab37-6e782265a75b" />
-
-**1.4.2 Generar link de pago**
-Abrimos el `http://localhost:8000/docs`, nos dirigimos a la opción de `POST /api/pagos/crear`. Entonces la API responderá con un `sandbox_init_point`, tal y como se aprecia en las imágenes de abajo.
-<img width="952" height="305" alt="8" src="https://github.com/user-attachments/assets/1046f4f7-3ce9-4627-b99b-adde09b82ab3" />
-<img width="962" height="335" alt="9" src="https://github.com/user-attachments/assets/ed011f3b-e4ce-4492-9ebe-5adf62d9ee98" />
-
-**1.4.3 Abrir ventana incógnita o un nuevo navegador**
-Para no interferir con la sesión real abrimos un nuevo navegador o una ventana incógnita con `Ctrl+Shift`. En este caso yo abro el navegador vivaldi y pegamos el link del sandbox.
-
-<img width="973" height="281" alt="10" src="https://github.com/user-attachments/assets/54008664-e42a-4c48-b536-1052946a89b0" />
-
-**1.4.4 Iniciar sesión con cuenta comprador TEST-**
-El checkout solicita login para ello por defecto se usan las credenciales de la cuenta TEST-comprador, lo que habilitará el botón Pagar.
-
-**1.4.5 Completar el pago**
-Con sesión del comprador activa, el botón Pagar se habilita, entonces hacemos clic para que MercadoPago procese la transacción.
-
-En este ejemplo para pagar usamos la opción de "Dinero en Mercado Pago".
-<img width="807" height="415" alt="11" src="https://github.com/user-attachments/assets/8bbab966-9a3f-4420-b1af-d719fd4db82e" />
+**Stack Tecnológico Seleccionado:**
+- **FastAPI:** Elegido por su manejo asíncrono (ASGI), lo que permite procesar múltiples peticiones de pago y consultas de reportes simultáneamente sin bloquear el hilo principal.
+- **Pydantic:** Utilizado para la validación de esquemas, asegurando que los datos que entran a la base de datos sean 100% íntegros.
+- **SQL (PostgreSQL):** Motor relacional para garantizar la consistencia ACID en las transacciones financieras.
 
 
-**1.4.6 Confirmación**
-MercadoPago nos mostrará el siguiente mensaje: *"Listo! Tu pago ya se acreditó. Operación #155522875569, $1,500 MXN."*
-<img width="811" height="342" alt="12" src="https://github.com/user-attachments/assets/1b4fdd55-80e1-44ee-b1b5-91753ceaa31e" />
+## 1. Arquitectura y Proceso de Despliegue
 
-**1.4.7 Revisamos el comprobante**
-Hacemos click en el botón de "Ver comprobante" como se aprecia en la siguiente captura de pantalla.
-<img width="582" height="454" alt="13" src="https://github.com/user-attachments/assets/e5d0fbf4-4108-42a4-9a25-440a27d3e4b7" />
+Para la construcción del backend del proyecto EduCore MVP, se diseñó una arquitectura basada en microservicios utilizando **Python y FastAPI**, conectada a una base de datos relacional PostgreSQL alojada en **Microsoft Azure**, y desplegada en producción a través de contenedores Docker en **Hugging Face Spaces**.
 
-¡Listo! De esta manera comprobamos que nuestra demo local funciona con éxito.
----
-# 2. Explicación del código Python
+### 1.1 Entorno de Producción (Hugging Face Spaces)
+El servidor en vivo se encuentra alojado en un Space configurado con Docker. 
 
-## 2.1 Importaciones y configuración inicial
-<img width="683" height="101" alt="14" src="https://github.com/user-attachments/assets/15114b99-5bc1-470a-95a9-295d694ddd89" />
+| Dato | Valor |
+|------|-------|
+| **Tecnología Core** | Python 3.12 + FastAPI |
+| **Servidor ASGI** | Uvicorn (Puerto expuesto: 7860) |
+| **URL Base de la API** | `https://bitgames456-proyecto-cidium.hf.space` |
+| **Documentación Viva** | `/docs` (Swagger UI) |
 
-- **`FastAPI`**: Framework que convierte funciones Python en endpoints HTTP.
-- **`requests`**: Librería para hacer peticiones HTTP hacia la API de MercadoPago.
-- **`ACCESS_TOKEN`**: Llave de autenticación. Identifica la cuenta vendedor ante MercadoPago en cada petición.
+### 1.2 Proceso de Despliegue en la Nube
 
-## 2.2 Endpoint `POST /api/pagos/crear`
+1. **Configuración del Dockerfile:** Se instruye a Hugging Face para construir la imagen instalando las dependencias del archivo `requirements.txt` y exponiendo el puerto `7860`, requerido estrictamente por la plataforma.
+2. **Protección de Credenciales (Secrets):** Para evitar la exposición del archivo `.env` en un repositorio público, las credenciales de Azure se inyectaron directamente en la configuración del Space en Hugging Face.
 
-### Parte A – Headers
-<img width="620" height="120" alt="15" src="https://github.com/user-attachments/assets/b5a9e0cc-148e-4e50-931b-dc24dbde1619" />
+> **[INSERTA AQUÍ IMAGEN DE: Captura de pantalla de la sección "Variables and secrets" en los Settings de Hugging Face]**
 
-- **`Authorization`**: Autentica la petición. Sin este header MercadoPago responde `401`.
-- **`X-Idempotency-Key`**: Evita cobros duplicados si el alumno hace doble clic.
+3. **Verificación de Salud:** Una vez que el contenedor marca "Running", se accede al endpoint de salud para confirmar la conexión.
 
-### Parte B - Datos del pago
-<img width="556" height="181" alt="16" src="https://github.com/user-attachments/assets/2e35cbbc-c643-4503-b84f-694ac4f773ba" />
-
-El `title` es lo que ve el alumno en el checkout. Por otro lado, el `payer.email` en producción debe venir del alumno logueado en el sistema.
-
-### Parte C - Back URLs
-
-<img width="588" height="120" alt="17" src="https://github.com/user-attachments/assets/6f8737e2-31cb-4624-8b49-778dc605364d" />
-
-En producción estas URLs deben ser públicas. Es importante mencionar que la página de MercadoPago las llama desde sus servidores tras el pago.
-
-### Parte D - Respuesta y manejo de errores
-<img width="781" height="222" alt="18" src="https://github.com/user-attachments/assets/b93fba55-8a51-453b-a43e-f174b66eb696" />
-
-- **`status_code 201`**: MercadoPago regresa `201` cuando el checkout se creó correctamente.
-- **`init_point`**: URL del checkout real para producción. Es la URL generada dinámicamente por la API de Mercado Pago que contiene toda la configuración de la compra (monto, descripción y datos del alumno). En nuestro entorno de producción real, el Front-End utiliza este enlace para redirigir al usuario a una interfaz segura donde se procesan transacciones reales.
-
-## 2.3 Resumen de endpoints
-
-|Metodo|Ruta|Quien lo llama|Para que sirve|
-|-|-|-|-|
-|GET|/|Cualquiera|Verifica que el servidor está corriendo|
-|POST|/api/pagos/crear|Frontend|Genera el link de pago en MercadoPago|
-|GET|/success|MercadoPago|Recibe confirmación de pago aprobado|
-|GET|/failure|MercadoPago|Recibe notificación de pago rechazado|
-|GET|/pending|MercadoPago|Recibe notificación de pago pendiente|
-|GET|/api/alumnos/me/pagos|FrontEnd|Regresa el historial de pagos del alumno|
-
-## 2.4 Endpoint nuevo `GET /api/alumnos/me/pagos`
-
-Este endpoint se agregó para estar alineados con el documento Endpoints, porque este permite al frontend mostrar el historial de pagos de un alumno.
+> **[INSERTA AQUÍ IMAGEN DE: Captura de pantalla de la respuesta GET /health devolviendo {"status": "ok"}]**
 
 ---
 
-## Estrategia: dos versiones en el mismo archivo
+## 2. Explicación de la Estructura del Código
 
-La versión simulada funciona ahora sin base de datos, permitiendo al equipo de frontend conectarse y probar. La versión real es comentada y se activa cuando el equipo de BD entregue la conexión.
+El backend está fuertemente modularizado para separar la configuración del servidor, la gestión de rutas (routers) y la seguridad, permitiendo una fácil escalabilidad.
 
-- **Versión simulada**: Funciona ahora sin BD.
-<img width="855" height="289" alt="19" src="https://github.com/user-attachments/assets/4dcea993-6b3b-4182-83fa-06a9652a56b9" />
+### 2.1 Archivo Principal (`main.py`)
+Es el punto de entrada de la aplicación. Sus responsabilidades principales son:
+* Inicializar la aplicación FastAPI.
+* Configurar las políticas **CORS (Cross-Origin Resource Sharing)**, permitiendo que el Frontend (React) se comunique con el servidor desde un dominio distinto.
+* **Unificar los Enrutadores:** Utiliza `app.include_router()` para ensamblar los distintos módulos de la aplicación (`router` y `router_pagos`) en un solo servidor.
 
-- **Versión real**: Se activará cuando haya conexión a BD.
-<img width="942" height="59" alt="20" src="https://github.com/user-attachments/assets/6c5c35db-68c6-475f-b4e1-fb89118cf43e" />
-<img width="943" height="60" alt="21" src="https://github.com/user-attachments/assets/59a5bb06-24ba-4190-9ce8-b7bee77cdf18" />
+### 2.2 Gestión de Enrutadores (`router.py` y `pagos_mp.py`)
+Para mantener el código limpio, las rutas no se escriben en el archivo principal, sino que se dividen en submódulos utilizando `APIRouter`:
 
-### Respuesta que recibe el frontend
+1.  **Enrutador Core (`router.py`):** Agrupa la lógica principal del sistema. Todos sus endpoints heredan el prefijo `/api`.
+    * **Módulo de Autenticación:** Verifica credenciales en Azure, genera tokens JWT y registra logs de acceso.
+    * **Módulo de Administrador:** Protegido por roles. Permite gestionar estudiantes y cargos masivos.
+    * **Módulo de Portal Alumno:** Protegido por sesión. Devuelve información específica del alumno autenticado.
+2.  **Enrutador de Pagos (`pagos_mp.py`):** Módulo dedicado exclusivamente a la integración financiera. Utiliza el prefijo `/api/pagos` y aísla toda la lógica de conexión con la API de MercadoPago, generación de *Checkout Pro* y manejo de *Webhooks* (respuestas de éxito/fallo).
 
-El formato coincide exactamente con lo definido en el archivo `Endpoints.docx` del otro equipo:
-
-<img width="942" height="164" alt="22" src="https://github.com/user-attachments/assets/f541450c-016b-47f0-a973-01dfe817d9ec" />
-
-# 3. Requerimientos de Base de Datos
-
-## 3.1 Tabla existente: `PAYMENT_STUDENTS`
-Esta tabla ya existe en el diagrama ER. A continuación se muestran todos sus campos y cuáles son los que usa el módulo de pagos:
-
-|Campo|Tipo|Uso por Pagos|Descripcion|
-|-|-|-|-|
-|id|STRING|No|Identificador único del registro.|
-|payment_id|STRING FK| No|Referencia al concepto de pago en tabla PAYMENTS.|
-|student_id|STRING FK|No|Referencia al alumno en tabla STUDENTS.|
-|assigned_amount|DECIMAL|No|Monto asignado al alumno para ese pago.|
-|paid_amount|DECIMAL| Escribir | Monto que MercadoPago confirmó como cobrado.|
-|paid_at|DATETIME | Escribir | Fecha y hora exacta del pago confirmado.|
-|payment_method|STRING | Escribir | Se guarda 'mercadopago' al confirmar el pago.|
-|external_reference|STRING|Escribir|Aquí se guarda el payment_id que genera MercadoPago.|
-|status|STRING|Escribir|Se cambia a 'paid' cuando el pago es aprobado.|
-
-## 3.2 Qué debe hacer el equipo de base de datos
-Lo que se necesita del equipo de BD es:
-- Confirmar que el campo `external_reference` acepta el formato del `payment_id` de MercadoPago (string de hasta 100 caracteres).
-- Confirmar que el campo `payment_method` acepta el valor `'mercadopago'`.
-- Confirmar que el campo `status` acepta los valores: `'pending'`, `'paid'`, `'rejected'`.
-- Exponer un procedimiento o permitir el `UPDATE` desde la API cuando un pago es aprobado.
-
-## 3.3 Consultas que usará la API
-- **Verificar si un pago ya fue procesado** (evitar duplicados).
-
-<img width="941" height="41" alt="23" src="https://github.com/user-attachments/assets/2b915571-1d7b-4c32-aee5-7cee254c62ed" />
-
-- **Registrar el pago aprobado.**
-
-<img width="750" height="164" alt="24" src="https://github.com/user-attachments/assets/a230df42-74e9-4da0-b9bc-4c6a0d721842" />
-
-- **Verificar si un alumno tiene pago activo.**
-
-<img width="637" height="104" alt="25" src="https://github.com/user-attachments/assets/16c74257-d97e-4b71-bf08-1216995469e9" />
-
-- **Historial de pagos del alumno** (para el endpoint `GET /api/alumnos/me/pagos`).
-<img width="660" height="102" alt="26" src="https://github.com/user-attachments/assets/3b49f97a-ecf7-4603-9209-cc4cd1404953" />
+### 2.3 Seguridad y Dependencias (`auth.py` y `dependencias.py`)
+El flujo de seguridad funciona así:
+1. El usuario envía credenciales; la API valida la contraseña con el hash (`passlib`).
+2. Se firma un JWT (`python-jose`) con la `SECRET_KEY`.
+3. En peticiones posteriores, `verificador_usuario` o `verify_admin_role` extraen el JWT del header `Authorization`, lo decodifican y autorizan la operación según el rol.
 
 ---
 
-# 4. Requerimientos de Frontend
+## 3. Resumen de Endpoints de la API
 
-## 4.1 Botón de pago y llamada a la API
-<img width="949" height="221" alt="27" src="https://github.com/user-attachments/assets/172cea4e-4728-4bcc-a532-cba73adb8829" />
+La API cuenta con documentación autogenerada bajo el estándar OpenAPI (Swagger UI). 
 
-## 4.2 Páginas de resultado requeridas
-|Ruta|Caso|Que debe mostrar|
-|-|-|-|
-|/success|Pago aprobado|Mensaje de confirmación, número de operación y acceso activado.|
-|/failure|Pago rechazado|Mensaje de error y botón para intentar de nuevo.|
-|/pending|Pago pendiente|Aviso de que el pago está en proceso.|
----
+> **[INSERTA AQUÍ IMAGEN DE: image_bf285c.png - Captura general del Swagger mostrando todas las categorías (Authentication, Admin Reports, Admin Operations, Student Portal, Pagos MercadoPago)]**
 
-# 5. Análisis de integración con los demás equipos
-Se revisaron los documentos entregados por los otros equipos del proyecto: el diagrama Entidad-Relación, el documento de endpoints y los códigos de respuesta. A continuación se presentan los puntos de compatibilidad y las discrepancias que deben resolverse antes de la integración final.
+### 3.1 Autenticación y Sistema
+El endpoint `/api/auth/login` es la puerta de entrada. Trabaja bajo el estándar **OAuth2 con Password Flow**.
 
-### Documentos revisados
-- **diagrama-E-R.pdf** — Esquema relacional de la base de datos (Equipo Platform)
-- **Endpoints.docx** — Definición de rutas y respuestas de la API
-- **Codigos_.docx** — Ejemplos de respuestas HTTP
-- **Documento_guia_proyecto_integrador_EduCore_MVP.docx** — Guía general del proyecto
+**Cómo funciona internamente:**
+1. **Recepción:** Recibe un formulario (no JSON) con `username` y `password`.
+2. **Búsqueda Dual:** El sistema busca en Azure si el dato coincide con un `username` o con un `email`.
+3. **Verificación Criptográfica:** Se utiliza `passlib` para comparar la contraseña plana contra el Hash almacenado (Bcrypt).
+4. **Tokenización:** Si es válido, se genera un **JWT (JSON Web Token)** firmado con una clave secreta. Este token es el que el frontend usará para "identificarse" en cada clic posterior.
+5. **Auditoría:** Se registra un log en la tabla `login_logs` con la IP del solicitante y el resultado del intento.
 
-## 5.1 Puntos compatibles
-Los siguientes elementos ya están alineados entre lo que desarrollamos y lo que definieron los demás equipos:
 
-- **Compatible 1 — Campo `external_reference` en `PAYMENT_STUDENTS`**
-  El diagrama ER ya incluye el campo `external_reference` en la tabla `PAYMENT_STUDENTS`. Este campo es exactamente donde debe guardarse el `payment_id` que genera MercadoPago al aprobar una transacción. No se necesita ningún cambio en el esquema para soportar la integración.
+| Método | Ruta | Headers/Body | Para qué sirve |
+|---|---|---|---|
+| GET | `/health` | Ninguno | Verifica que el servidor está en línea. |
+| POST | `/api/auth/login` | `x-www-form-urlencoded` | Valida credenciales y devuelve el Token JWT. |
+| POST | `/api/auth/logout` | `Authorization: Bearer` | Invalida la sesión actual del usuario. |
 
-- **Compatible 2 — Monto de la colegiatura**
-  El documento guía define la colegiatura en $1,500 y el código implementado usa ese mismo valor. Ambos coinciden.
+### 3.2 Operaciones de Administrador
+Este módulo utiliza **SQL Agregado** para generar inteligencia de negocio en tiempo real.
 
-- **Compatible 3 — Módulos de autenticación y reportería**
-  Los endpoints de login, logout, `/api/auth/me`, `/api/administrador/reporteactivos` y `/api/administrador/reportepagos` no tienen conflicto con el módulo de pagos. Pueden desarrollarse en paralelo sin dependencias.
+- **Reportes de Alumnos (`/admin/reportes/estudiantes-activos`)**: Utiliza la cláusula `SUM(CASE WHEN ...)` para que la base de datos haga el conteo pesado y entregue solo el resultado final a la API, optimizando el ancho de banda.
+- **Creación de Alumnos (`/admin/estudiantes`)**: Implementa una **Transacción Atómica**. Primero crea el usuario en la tabla `users`, obtiene el ID generado, y solo si eso funciona, crea el perfil en la tabla `students`. Si algo falla, se hace un `rollback` automático para no dejar datos huérfanos.
 
-- **Compatible 4 — Historial de pagos del alumno**
-  El endpoint `GET /api/alumnos/me/pagos` definido en `Endpoints.docx` se apoya en las tablas `PAYMENT_STUDENTS` y `PAYMENTS` del diagrama ER, que ya incluyen los campos necesarios para mostrar fecha, descripción y monto de cada pago.
+*Requieren token de sesión con rol `superadmin` o `admin`.*
 
-## 5.2 Discrepancias que deben resolverse
+| Método | Ruta | Body (JSON) | Para qué sirve |
+|---|---|---|---|
+| GET | `/api/admin/reportes/estudiantes-activos` | N/A | Devuelve el total de alumnos activos vs inactivos. |
+| GET | `/api/admin/reportes/pagos` | N/A | Devuelve la sumatoria monetaria de ingresos reales vs deuda pendiente. |
+| GET | `/api/admin/estudiantes` | N/A | Lista el directorio completo de alumnos. |
+| POST | `/api/admin/estudiantes` | `{ username, email, password... }` | Registra un alumno y crea su perfil académico. |
+| POST | `/api/admin/cargos` | `{ concept, amount, due_date }` | Crea un concepto de cobro y lo asigna a todos los alumnos activos. |
 
-### Discrepancia 1 — Stripe vs MercadoPago
-- **Problema:** El documento guía del proyecto indica explícitamente: "Se usa STRIPE para procesar pagos". Sin embargo, la implementación desarrollada usa MercadoPago. Ambos son pasarelas de pago válidas para sandbox, pero tienen flujos técnicos distintos. Esta decisión afecta el nombre de los campos, la forma del request y las URLs de retorno.
-- **Acción recomendada:** Confirmar con Alan que la pasarela de pagos será con la API Mercado Pago. Si se aprueba MercadoPago, actualizar el documento guía. Si se requiere Stripe, el código necesita rehacerse con el SDK de Stripe.
+### 3.3 Portal del Estudiante
+Los endpoints de este módulo filtran la información basándose en el **ID del token**.
+- Al llamar a `/api/estudiantes/me/pagos`, la consulta SQL hace un `JOIN` entre `charges` y `payment_students` usando el `user_id` del token. Esto garantiza que un alumno **nunca** pueda ver la deuda de otro, incluso si intenta manipular la URL.
 
-### Discrepancia 2 — Nombre del endpoint no coincide
-- **Problema:** El documento `Endpoints.docx` define la ruta como `POST /api/pagos/procesar`. El código implementado usa `POST /api/pagos/crear`. El frontend y el backend deben usar exactamente el mismo nombre o la conexión fallará.
-- **Acción recomendada:** Acordar con el equipo de endpoints y el equipo de frontend cuál nombre usar. Se recomienda `/api/pagos/crear` porque describe mejor la acción (crear una preferencia de pago), pero cualquier nombre funciona si todos lo usan igual.
+*Requieren token de sesión.*
 
-### Discrepancia 3 — El request body es incompatible con MercadoPago
-- **Problema:** El documento `Endpoints.docx` define el body de `POST /api/pagos/procesar` como: `{ payment_id, card_number, exp_date, cvc, country }`. Estos son campos de tarjeta que corresponden al flujo de Stripe. Sin embargo, con MercadoPago, el alumno ingresa los datos de tarjeta directamente en el checkout de MercadoPago — nunca los envía a nuestro servidor. El request correcto para MercadoPago es: `{ email, monto, descripcion }`.
-- **Acción recomendada:** Debemos actualizar el documento de endpoints con el request body correcto para MercadoPago. El equipo de frontend debe enviar email, monto y descripción, no datos de tarjeta.
-
-### Discrepancia 4 — Faltan los endpoints de retorno en la documentación
-- **Problema:** Los endpoints `GET /success`, `GET /failure` y `GET /pending` no aparecen en el documento `Endpoints.docx`. MercadoPago los necesita para redirigir al alumno después del pago. Sin estas rutas documentadas, el equipo de frontend no sabrá qué páginas debe crear.
-- **Acción recomendada:** Agregar estos tres endpoints al documento de endpoints del proyecto con sus rutas, quién los llama (MercadoPago) y qué parámetros reciben (`payment_id`, `status` en la URL).
-
-### Discrepancia 5 — La tabla pagos nueva vs usar `PAYMENT_STUDENTS` existente
-- **Problema:** El documento de requerimientos que generamos pide crear una tabla nueva llamada pagos. Sin embargo, el diagrama ER del equipo Platform ya tiene la tabla `PAYMENT_STUDENTS` con los campos necesarios: `external_reference` (para el `payment_id` de MercadoPago), `paid_amount`, `paid_at`, `payment_method` y `status`.
-- **Acción recomendada:** No crear una tabla nueva. En lugar de eso, usar la tabla `PAYMENT_STUDENTS` ya definida. Al confirmar un pago aprobado, guardar el `payment_id` de MercadoPago en el campo `external_reference` y actualizar `paid_amount`, `paid_at`, `payment_method` y `status` en el registro correspondiente al alumno.
-
-## 5.3 Cómo debe quedar el flujo con la BD real
-Usando la estructura de tablas del diagrama ER, el flujo correcto al recibir un pago aprobado es:
-
-1. **MercadoPago llama a `/success` con `payment_id`:** La API recibe el `payment_id` en los parámetros de la URL.
-2. **Verificar con MercadoPago que el pago es real:** `GET https://api.mercadopago.com/v1/payments/{payment_id}` — confirmar que `status == approved`.
-3. **Buscar el registro en `PAYMENT_STUDENTS`:** Identificar cuál es el cargo pendiente del alumno usando su `student_id` y el `payment_id` de `PAYMENTS`.
-4. **Actualizar `PAYMENT_STUDENTS`:** Llenar los campos: `external_reference` = `payment_id` de MP, `paid_amount` = monto cobrado, `paid_at` = fecha actual, `payment_method` = `mercadopago`, `status` = `paid`.
-
-<img width="637" height="222" alt="28" src="https://github.com/user-attachments/assets/e314fcf3-1a9e-44dc-9c86-f79d0aaabf19" />
-
-## 5.4 Tabla resumen de discrepancias
-|No.|Discrepancia|Impacto|Estado|Accion|
-|-|-|-|-|-|
-|1|Stripe vs MercadoPago|Alto — afecta toda la integración|Sin resolver|Confirmar con maestro|
-|2|Nombre del endpoint|Alto — frontend no conecta|Sin resolver|Acordar nombre único|
-|3|Request body incompatible|Alto — datos incorrectos|Sin resolver|Actualizar Endpoints.docx|
-|4|Faltan endpoints de retorno|Medio — frontend no sabe que paginas crear|Sin resolver|Agregar a Endpoints.docx|
-
----
- 
-# 6. Resumen de requerimientos por equipo
-
-| Área | Qué necesita entregar | Prioridad |
+| Método | Ruta | Para qué sirve |
 |---|---|---|
-| Base de datos | Confirmar uso de PAYMENT_STUDENTS para registrar pagos MP | Alta |
-| Base de datos | Exponer campo external_reference para guardar payment_id | Alta |
-| Endpoints | Actualizar nombre: /api/pagos/crear | Alta |
-| Endpoints | Corregir request body (email, monto, descripción) | Alta |
-| Endpoints | Agregar /success, /failure y /pending | Alta |
-| Frontend | Botón que llame a POST /api/pagos/crear | Alta |
-| Frontend | Enviar email, monto y descripción (sin datos de tarjeta) | Alta |
-| Frontend | Redirigir al alumno al init_point recibido | Alta |
-| Frontend | Crear páginas /success, /failure y /pending | Alta |
-| Frontend | Confirmar si usar Stripe o MercadoPago con Alan | Alta |
+| GET | `/api/estudiantes/me` | Devuelve el nombre, curso y estado del alumno logueado. |
+| GET | `/api/estudiantes/me/pagos` | Cruza las tablas para devolver el historial de deudas, fechas límite y estatus de pago del alumno. |
+
+### 3.4 Módulo de Pagos (MercadoPago)
+La lógica de pagos es el corazón financiero del sistema.
+
+**Flujo de Creación (`/api/pagos/crear`):**
+- El backend construye una "Preferencia de Pago". 
+- Se asigna una `X-Idempotency-Key` basada en el ID del alumno. Esto evita que, si hay un lag de red y el alumno hace doble clic, se generen dos cobros en MercadoPago.
+- Se definen las **Back URLs**: Direcciones a las que MercadoPago enviará al usuario tras el pago (`success`, `failure`, `pending`).
+
+**Flujo de Confirmación (`/api/pagos/success`):**
+- Es un **Webhook**. MercadoPago envía un `payment_id`.
+- El backend realiza una consulta *Server-to-Server* hacia MercadoPago para verificar que el estatus sea realmente `approved` y que el monto coincida con lo esperado.
+- Tras la validación, se actualiza la tabla `payment_students`, registrando el ID de transacción externa y cambiando el estatus a `paid`.
+
+*Rutas gestionadas de forma independiente por el enrutador `pagos_mp.py`.*
+
+| Método | Ruta | Para qué sirve |
+|---|---|---|
+| POST | `/api/pagos/crear` | Genera la preferencia de pago en MercadoPago y devuelve el link seguro (`init_point`). |
+| GET | `/api/pagos/success` | Recibe la confirmación de MercadoPago, valida el pago y actualiza la BD a `paid`. |
+| GET | `/api/pagos/failure` | Maneja la redirección cuando un pago es rechazado. |
+| GET | `/api/pagos/pending` | Maneja la redirección cuando un pago queda en proceso (Oxxo, transferencia tardía). |
+| GET | `/api/pagos/historial` | Consulta la BD y devuelve el historial de pagos concretados del alumno. |
+
+> **[INSERTA AQUÍ IMAGEN DE: image_703ab6.png - Captura enfocada exclusivamente en la sección "Pagos MercadoPago" del Swagger]**
+
 ---
+
+## 4. Requerimientos de Base de Datos
+La base de datos PostgreSQL está configurada en Azure para garantizar alta disponibilidad. El backend se comunica mediante el driver `psycopg2-binary`.
+
+**Relaciones Clave en el Esquema:**
+- **`users` 1:1 `students`**: Un usuario puede ser un estudiante con matrícula única.
+- **`charges` 1:N `payment_students`**: Un cargo (ej. Colegiatura Mayo) se replica para muchos estudiantes.
+
+| Tabla | Uso en la API | Responsabilidad Crítica |
+|---|---|---|
+| `roles` / `institutions` | **Lectura** | Se extraen IDs por defecto al registrar entidades. |
+| `users` | **Lectura/Escritura** | Almacena el `password_hash`, validación de login e información principal. |
+| `login_logs` | **Escritura** | Guarda auditorías de acceso (éxitos, fallos, IPs). |
+| `students` | **Lectura/Escritura** | Almacena datos del perfil académico (matrícula, curso). |
+| `charges` | **Escritura** | Almacena el concepto de deuda global. |
+| `payment_students` | **Lectura/Escritura** | Tabla pivote. Asigna el monto exacto, estatus (`pending`, `paid`) y guarda el `external_reference` (ID de operación de MercadoPago). |
+
+---
+
+## 5. Configuración de Infraestructura y Despliegue
+
+El despliegue en **Hugging Face Spaces** utiliza tecnología de contenedores (Docker).
+
+**Archivo Dockerfile:**
+- Utiliza una imagen base ligera de Linux (`python:3.10-slim`).
+- Expone el puerto `7860`.
+- Define el `WORKDIR` y copia los archivos necesarios.
+
+**Gestión de Secretos:**
+Las variables sensibles como `DB_PASSWORD` y `SECRET_KEY` no se suben al código. Se configuran en el panel de control de Hugging Face como **Secretos de Entorno**, los cuales son inyectados al contenedor en tiempo de ejecución.
+
+> **[INSERTA AQUÍ IMAGEN DE: Captura de pantalla de la sección "Variables and secrets" en Hugging Face]**
+
+## 6. Gestión de Errores y Glosario Técnico
+
+- **401 Unauthorized**: El token no es válido o ha expirado.
+- **403 Forbidden**: El usuario está logueado pero no tiene el rol necesario (ej. Alumno intentando entrar a reportes admin).
+- **422 Unprocessable Entity**: Los datos enviados desde el frontend no cumplen con el esquema de Pydantic en `schemas.py`.
+- **500 Internal Server Error**: Generalmente ocurre por una falla en la conexión con Azure o un error de lógica SQL.
+
+---
+**Documentación generada para el equipo de desarrollo EduCore.**
+**Versión:** 2.0 (Detalle Expandido)
+
+
+
+## 7. Requerimientos y Conexión con Frontend
+
+Para que el equipo de Frontend (React/Vite) pueda consumir esta API sin errores:
+
+### 7.1 Especificaciones de URL
+La URL base debe ser inyectada **sin la diagonal final (`/`)** para evitar errores `404 Not Found` al concatenar los enrutadores.
+* Correcto: `https://bitgames456-proyecto-cidium.hf.space/api`
+
+### 7.2 Estructura del Login (OAuth2)
+El protocolo OAuth2 de FastAPI exige que las credenciales de inicio de sesión se envíen en formato de formulario, no como JSON crudo. El frontend **debe** empaquetar los datos usando `URLSearchParams`.
+
+### 7.3 Inyección del Token JWT
+Recibido el JWT, el frontend debe almacenarlo y adjuntarlo en los Headers de todas las peticiones protegidas bajo el formato `Authorization: Bearer <TOKEN>`.
+
+---
+
+## 8. Análisis de Integración y Discrepancias
+
+Durante el acoplamiento entre Frontend, Backend y BD, se resolvieron varios puntos clave:
+
+### 8.1 Puntos Compatibles y Logrados
+* **Modularidad Activa:** La separación en `router.py` y `pagos_mp.py` permitió desarrollar la lógica de negocio y la pasarela de pagos en paralelo sin conflictos de código.
+* **Seguridad Sólida:** El middleware de FastAPI bloquea peticiones sin token, y React intercepta el error `401 Unauthorized` para expulsar al usuario al Login.
+
+### 8.2 Discrepancias Resueltas
+
+| Discrepancia Detectada | Impacto | Solución Implementada |
+|---|---|---|
+| **Idioma de las Rutas** | Frontend solicitaba `/admin/students`, Backend definía `/admin/estudiantes` (Error 404). | Se estandarizó la capa `api.js` del frontend para mapear exactamente las rutas en español expuestas por los routers. |
+| **Choque de Roles (Loop)** | FastAPI devuelve `superadmin`, pero React esperaba `admin`, causando un bucle infinito ("pantalla negra"). | Se modificó `ProtectedRoute.jsx` en React para normalizar los roles y aceptar `superadmin` como perfil válido. |
+| **Manejo de Perfiles Inexistentes** | Si un admin entraba al portal de alumnos, React intentaba leer un perfil inexistente y la app fallaba. | Se implementó "Optional Chaining" (`?.`) y mensajes de error amigables para evitar el colapso del sistema. |
+

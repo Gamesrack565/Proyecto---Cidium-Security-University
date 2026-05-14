@@ -6,8 +6,8 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from typing import Any
-from auth import SECRET_KEY, ALGORITHM
-from database import get_coneccion_base_de_datos
+from Seguridad_base_de_datos.auth import SECRET_KEY, ALGORITHM
+from Seguridad_base_de_datos.database import get_coneccion_base_de_datos
 
 #Generador de token de segruidad, utilizando el esquema de OAuth2 con contraseña y token de portador
 #Se le indica la ruta del endpoint de login para obtener el token, que es "api/auth/login" en este caso
