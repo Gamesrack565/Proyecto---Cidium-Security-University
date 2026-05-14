@@ -6,10 +6,10 @@
 * [2. Explicación de la Estructura del Código](#2-explicación-de-la-estructura-del-código)
 * [3. Resumen de Endpoints de la API](#3-resumen-de-endpoints-de-la-api)
 * [4. Requerimientos de Base de Datos](#4-requerimientos-de-base-de-datos)
-* [5. Configuración de Infraestructura y Despliegue](#5.-configuración-de-infraestructura-y-despliegue)
-* [6. Gestión de Errores y Glosario Técnico](#6.-gestión-de-errores-y-glosario-técnico)
-* [7. Requerimientos y Conexión con Frontend](#7.-requerimientos-y-conexión-con-frontend)
-* [8. Análisis de Integración y Discrepancias](#8.-análisis-de-integración-y-discrepancias)
+* [5. Configuración de Infraestructura y Despliegue](#5-configuración-de-infraestructura-y-despliegue)
+* [6. Gestión de Errores y Glosario Técnico](#6-gestión-de-errores-y-glosario-técnico)
+* [7. Requerimientos y Conexión con Frontend](#7-requerimientos-y-conexión-con-frontend)
+* [8. Análisis de Integración y Discrepancias](#8-análisis-de-integración-y-discrepancias)
 
 ---
 
