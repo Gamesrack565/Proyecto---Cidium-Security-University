@@ -5,8 +5,8 @@ from typing import Any
 from dotenv import load_dotenv
 
 # Importaciones del proyecto existente
-from database import get_coneccion_base_de_datos
-from dependencias import verificador_usuario
+from Seguridad_base_de_datos.database import get_coneccion_base_de_datos
+from Dependencias.dependencias import verificador_usuario
 
 # Carga el archivo .env
 load_dotenv()

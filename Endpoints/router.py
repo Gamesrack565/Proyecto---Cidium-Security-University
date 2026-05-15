@@ -9,10 +9,10 @@ from typing import Any
 from uuid import UUID
 
 #Importaciones de esquemas, conexión a BD y funciones de seguridad propias de la aplicación
-import schemas
-from database import get_coneccion_base_de_datos
-from dependencias import verificador_usuario, verify_admin_role
-from auth import verificar_contrasena, create_access_token, get_contrasena_hash
+import Schemas.schemas as schemas
+from Seguridad_base_de_datos.database import get_coneccion_base_de_datos
+from Dependencias.dependencias import verificador_usuario, verify_admin_role
+from Seguridad_base_de_datos.auth import verificar_contrasena, create_access_token, get_contrasena_hash
 
 #Se inicializa el enrutador principal agregando el prefijo "/api" a todas las rutas definidas aquí
 router = APIRouter(prefix="/api")
