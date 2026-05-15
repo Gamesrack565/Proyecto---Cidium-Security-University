@@ -62,10 +62,12 @@ def crear_pago(
             "email": user['email']
         },
         "back_urls": {
-            "success": "http://localhost:8000/api/pagos/success",
-            "failure": "http://localhost:8000/api/pagos/failure",
-            "pending": "http://localhost:8000/api/pagos/pending"
+                "success": "https://bitgames456-proyecto-cidium.hf.space/api/pagos/success",
+                "failure": "https://bitgames456-proyecto-cidium.hf.space/api/pagos/failure",
+                "pending": "https://bitgames456-proyecto-cidium.hf.space/api/pagos/pending"
         }
+
+
     }
 
     try:
