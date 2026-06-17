@@ -10,6 +10,7 @@ from uuid import UUID
 class ReporteActivosResponse(BaseModel):
     numero_de_alumnos_activos: int
     numero_de_alumnos_inactivos: int
+    cuota_actual: float = 0.0  # <-- Nuevo campo agregado
 
 class ReportePagosResponse(BaseModel):
     sumatoria_pagos_realizados: float

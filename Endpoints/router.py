@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from typing import Any
 from uuid import UUID
+from pydantic import BaseModel
 
 #Importaciones de esquemas, conexión a BD y funciones de seguridad propias de la aplicación
 import Schemas.schemas as schemas
@@ -94,34 +95,31 @@ def logout_user(current_user: dict = Depends(verificador_usuario)):
 # Módulo de Administrador (Reportes y Operaciones)
 # ==========================================
 
-#Genera un reporte contabilizando el total de estudiantes activos e inactivos en el sistema
+# ESTA FUNCIÓN SE MODIFICA
 @router.get("/admin/reportes/estudiantes-activos", response_model=schemas.ReporteActivosResponse, tags=["Admin Reports"])
-def get_reporte_activos_estudiantes(
-    db: Any = Depends(get_coneccion_base_de_datos), 
-    admin_user: dict = Depends(verify_admin_role) #Se asegura que solo un administrador acceda
-):
-    #Abre un cursor para la consulta
+def get_reporte_activos_estudiantes(db: Any = Depends(get_coneccion_base_de_datos), admin_user: dict = Depends(verify_admin_role)):
     cursor = db.cursor()
-    #Construye la consulta para sumar condicionalmente los estados activos e inactivos
-    query = """
+    
+    # 1. Contar estudiantes
+    cursor.execute("""
         SELECT 
             SUM(CASE WHEN u.status = 'active' AND s.enrollment_status = 'active' THEN 1 ELSE 0 END) AS activos,
             SUM(CASE WHEN u.status != 'active' OR s.enrollment_status != 'active' THEN 1 ELSE 0 END) AS inactivos
-        FROM users u
-        JOIN students s ON u.id = s.user_id;
-    """
-    #Ejecuta la consulta y obtiene el resultado
-    cursor.execute(query)
+        FROM users u JOIN students s ON u.id = s.user_id;
+    """)
     result = cursor.fetchone()
-    
-    #Maneja valores nulos en caso de que la tabla esté vacía, asignando 0 por defecto
     activos = result['activos'] if result['activos'] is not None else 0
     inactivos = result['inactivos'] if result['inactivos'] is not None else 0
 
-    #Retorna la respuesta estructurada con los totales calculados
+    # 2. Leer la cuota actual global de la institución
+    cursor.execute("SELECT tuition_fee FROM institutions LIMIT 1")
+    inst_data = cursor.fetchone()
+    cuota_actual = float(inst_data['tuition_fee']) if inst_data else 1500.0
+
     return schemas.ReporteActivosResponse(
         numero_de_alumnos_activos=activos, 
-        numero_de_alumnos_inactivos=inactivos
+        numero_de_alumnos_inactivos=inactivos,
+        cuota_actual=cuota_actual
     )
 
 #Genera un reporte general de pagos, calculando los montos totales realizados y pendientes
@@ -204,52 +202,46 @@ def crear_estudiante(
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Error al registrar alumno. Detalle: {str(e)}")
 
-#Crea un nuevo cargo a cobrar y lo asigna automáticamente a todos los estudiantes activos
+# ESTA FUNCIÓN SE MODIFICA
 @router.post("/admin/cargos", tags=["Admin Operations"])
 def crear_cargo(
-    charge_data: schemas.CargoCreate,
+    charge_data: schemas.CargoCreate, 
     db: Any = Depends(get_coneccion_base_de_datos),
     admin_user: dict = Depends(verify_admin_role)
 ):
     cursor = db.cursor()
     
-    #Obtiene el ID de la institución por defecto
-    cursor.execute("SELECT id FROM institutions LIMIT 1")
-    inst_id = cursor.fetchone()['id']
+    # Obtenemos la institución y su precio FIJO global
+    cursor.execute("SELECT id, tuition_fee FROM institutions LIMIT 1")
+    inst = cursor.fetchone()
+    monto_fijo = float(inst['tuition_fee'])
     
     try:
-        #Registra el nuevo cargo general en la tabla 'charges' y obtiene su ID
+        # Se ignora el "charge_data.amount" porque ahora usamos "monto_fijo"
         cursor.execute("""
             INSERT INTO charges (institution_id, concept, amount, currency, due_date, status)
             VALUES (%s, %s, %s, 'MXN', %s, 'pending') RETURNING id
-        """, (inst_id, charge_data.concept, charge_data.amount, charge_data.due_date))
+        """, (inst['id'], charge_data.concept, monto_fijo, charge_data.due_date))
         new_charge_id = cursor.fetchone()['id']
         
-        #Busca a todos los estudiantes cuyo estado de matrícula sea activo
         cursor.execute("SELECT id FROM students WHERE enrollment_status = 'active'")
         active_students = cursor.fetchall()
         
-        #Si no se encuentran estudiantes activos, deshace la creación del cargo y avisa
         if not active_students:
             db.rollback()
-            return {"message": "Cargo creado, pero no hay alumnos activos a los cuales asignarlo."}
+            return {"message": "Cargo creado, pero no hay alumnos activos."}
             
-        #Itera sobre cada estudiante activo y le asocia la deuda en la tabla 'payment_students'
         for s in active_students:
             cursor.execute("""
                 INSERT INTO payment_students (payment_id, student_id, assigned_amount, paid_amount, status)
                 VALUES (%s, %s, %s, 0, 'pending')
-            """, (new_charge_id, s['id'], charge_data.amount))
+            """, (new_charge_id, s['id'], monto_fijo))
             
-        #Si todo sale bien, guarda todos los cambios en cascada
         db.commit()
-        return {"message": f"Cargo generado y asignado automáticamente a {len(active_students)} alumnos activos."}
-    #Atrapa errores en la transacción
+        return {"message": f"Cargo de ${monto_fijo} asignado a {len(active_students)} alumnos."}
     except Exception as e:
-        #Revierte toda la operación para evitar registros huérfanos
         db.rollback()
-        raise HTTPException(status_code=400, detail=f"Error al generar los cargos. Detalle: {str(e)}")
-
+        raise HTTPException(status_code=400, detail=str(e))
 
 # ==========================================
 # Módulo de Perfiles (Portal Alumno)
@@ -322,3 +314,22 @@ def get_historial_pago_estudiantes(current_user: dict = Depends(verificador_usua
     #Guarda la actualización
 #    db.commit()
 #    return {"message": "Contraseña de superadmin1 actualizada a 'admin123' exitosamente."}
+
+# NUEVO ENDPOINT PARA ACTUALIZAR LA CUOTA GLOBAL
+class ActualizarCuota(BaseModel):
+    nueva_cuota: float
+
+@router.put("/admin/configuracion/cuota", tags=["Admin Operations"])
+def actualizar_colegiatura(
+    datos: ActualizarCuota, 
+    db: Any = Depends(get_coneccion_base_de_datos),
+    admin_user: dict = Depends(verify_admin_role)
+):
+    cursor = db.cursor()
+    try:
+        cursor.execute("UPDATE institutions SET tuition_fee = %s", (datos.nueva_cuota,))
+        db.commit()
+        return {"message": f"Colegiatura global actualizada a ${datos.nueva_cuota}"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Error al actualizar la cuota")
