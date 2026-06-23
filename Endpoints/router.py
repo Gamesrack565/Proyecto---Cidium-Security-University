@@ -219,7 +219,7 @@ def crear_cargo(
     try:
         # Se ignora el "charge_data.amount" porque ahora usamos "monto_fijo"
         cursor.execute("""
-            INSERT INTO charges (institution_id, concept, amount, currency, due_date, status)
+            INSERT INTO payments (institution_id, concept, amount, currency, due_date, status)
             VALUES (%s, %s, %s, 'MXN', %s, 'pending') RETURNING id
         """, (inst['id'], charge_data.concept, monto_fijo, charge_data.due_date))
         new_charge_id = cursor.fetchone()['id']
@@ -281,7 +281,7 @@ def get_historial_pago_estudiantes(current_user: dict = Depends(verificador_usua
             ps.status as estatus
         FROM payment_students ps
         JOIN students s ON ps.student_id = s.id
-        JOIN charges c ON ps.payment_id = c.id
+        JOIN payments c ON ps.payment_id = c.id
         WHERE s.user_id = %s
     """, (current_user['user_id'],))
     

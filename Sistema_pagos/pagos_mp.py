@@ -1,5 +1,6 @@
 import os
 import requests
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, Request
 from typing import Any
 from dotenv import load_dotenv
@@ -36,7 +37,7 @@ def crear_pago(
         SELECT ps.assigned_amount, c.concept 
         FROM payment_students ps
         JOIN students s ON ps.student_id = s.id
-        JOIN charges c ON ps.payment_id = c.id
+        JOIN payments c ON ps.payment_id = c.id
         WHERE s.user_id = %s AND ps.status = 'pending'
         LIMIT 1
     """, (current_user['user_id'],))
@@ -53,7 +54,7 @@ def crear_pago(
     headers = {
         "Authorization": f"Bearer {ACCESS_TOKEN}",
         "Content-Type": "application/json",
-        "X-Idempotency-Key": f"pago-{current_user['user_id']}-{concepto_pago}"
+        "X-Idempotency-Key": str(uuid.uuid4())
     }
     data = {
         "items": [{
@@ -67,13 +68,13 @@ def crear_pago(
         "payer": {
             "email": user['email']
         },
-        "back_urls": {
-            # ESTO ES LO QUE FALTA CAMBIAR
-            "success": "https://TU-URL-DEL-FRONTEND.com/pago/exitoso",
-            "failure": "https://TU-URL-DEL-FRONTEND.com/pago/fallido",
-            "pending": "https://TU-URL-DEL-FRONTEND.com/pago/pendiente"
-        },
-        "auto_return": "approved"
+    "external_reference": str(current_user['user_id']),
+    "back_urls": {
+    "success": "http://localhost:5173/pago/exitoso",
+    "failure": "http://localhost:5173/pago/fallido",
+    "pending": "http://localhost:5173/pago/pendiente"
+}
+      #  "auto_return": "approved"
     }
 
     try:
@@ -115,19 +116,21 @@ def pago_exitoso(
         return {"mensaje": "El pago no fue aprobado", "status": status_mp}
 
     monto = float(data.get("transaction_amount"))
-    email = data.get("payer", {}).get("email")
+    user_id_pago = data.get("external_reference")
+    
+    if not user_id_pago:
+        raise HTTPException(status_code=400, detail="El pago no tiene external_reference, no se puede identificar al alumno.")
 
     cursor = db.cursor()
 
-    # Buscar en la BD cuánto debía este alumno realmente
+    # Buscar en la BD cuánto debía este alumno realmente (por user_id, no por email)
     cursor.execute("""
         SELECT ps.assigned_amount 
         FROM payment_students ps
         JOIN students s ON ps.student_id = s.id
-        JOIN users u ON s.user_id = u.id
-        WHERE u.email = %s AND ps.status = 'pending'
-    """, (email,))
-    
+        WHERE s.user_id = %s AND ps.status = 'pending'
+    """, (user_id_pago,))
+
     cargo_esperado = cursor.fetchone()
     if not cargo_esperado:
         raise HTTPException(status_code=400, detail="No se encontró un cargo pendiente para este usuario.")
@@ -143,9 +146,9 @@ def pago_exitoso(
         cursor.execute("""
             UPDATE payment_students
             SET external_reference = %s, paid_amount = %s, paid_at = NOW(), payment_method = 'mercadopago', status = 'paid'
-            WHERE student_id = (SELECT s.id FROM students s JOIN users u ON s.user_id = u.id WHERE u.email = %s)
+            WHERE student_id = (SELECT s.id FROM students s WHERE s.user_id = %s)
             AND status = 'pending'
-        """, (payment_id, monto, email))
+        """, (payment_id, monto, user_id_pago))
         db.commit()
     except Exception as e:
         db.rollback()
@@ -175,7 +178,7 @@ def historial_pagos(current_user: dict = Depends(verificador_usuario), db: Any =
     cursor.execute("""
         SELECT ps.paid_at AS fecha, p.concept AS descripcion, ps.paid_amount AS monto
         FROM payment_students ps
-        JOIN charges p ON ps.payment_id = p.id
+        JOIN payments p ON ps.payment_id = p.id
         JOIN students s ON ps.student_id = s.id
         WHERE s.user_id = %s AND ps.status = 'paid'
         ORDER BY ps.paid_at DESC
