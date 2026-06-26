@@ -37,7 +37,7 @@ def crear_pago(
         SELECT ps.assigned_amount, c.concept 
         FROM payment_students ps
         JOIN students s ON ps.student_id = s.id
-        JOIN payments c ON ps.payment_id = c.id
+        JOIN charges c ON ps.payment_id = c.id
         WHERE s.user_id = %s AND ps.status = 'pending'
         LIMIT 1
     """, (current_user['user_id'],))
@@ -178,7 +178,7 @@ def historial_pagos(current_user: dict = Depends(verificador_usuario), db: Any =
     cursor.execute("""
         SELECT ps.paid_at AS fecha, p.concept AS descripcion, ps.paid_amount AS monto
         FROM payment_students ps
-        JOIN payments p ON ps.payment_id = p.id
+        JOIN charges p ON ps.payment_id = p.id
         JOIN students s ON ps.student_id = s.id
         WHERE s.user_id = %s AND ps.status = 'paid'
         ORDER BY ps.paid_at DESC
