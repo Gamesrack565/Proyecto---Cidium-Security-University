@@ -13,6 +13,7 @@ from Dependencias.dependencias import verificador_usuario
 load_dotenv()
 
 ACCESS_TOKEN = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 router_pagos = APIRouter(prefix="/api/pagos", tags=["Pagos MercadoPago"])
 
@@ -70,9 +71,9 @@ def crear_pago(
         },
     "external_reference": str(current_user['user_id']),
     "back_urls": {
-    "success": "http://localhost:5173/pago/exitoso",
-    "failure": "http://localhost:5173/pago/fallido",
-    "pending": "http://localhost:5173/pago/pendiente"
+    "success": f"{FRONTEND_URL}/pago/exitoso",
+    "failure": f"{FRONTEND_URL}/pago/fallido",
+    "pending": f"{FRONTEND_URL}/pago/pendiente"
 }
       #  "auto_return": "approved"
     }

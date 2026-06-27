@@ -1,8 +1,11 @@
-/venv
-venv
-__pycache__
+# Entorno virtual de Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Variables de entorno (CRITICO: nunca subir credenciales)
 .env
-env/
-/.env
-repara_Admin.py
-eliminar_base.py
+
+# Otros
+.DS_Store
