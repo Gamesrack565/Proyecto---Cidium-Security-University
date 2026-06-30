@@ -28,7 +28,8 @@ def get_coneccion_base_de_datos():
             dbname=DB_NAME,
             user=DB_USER,
             password=DB_PASSWORD,
-            cursor_factory=RealDictCursor 
+            cursor_factory=RealDictCursor, 
+            options="-c search_path=school_platform"
         )
         #Si la coneccion es exitosa, se devuelve el objeto de coneccion para ser utilizado en las operaciones de la base de datos
         yield conecc
