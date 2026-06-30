@@ -6,6 +6,3 @@ __pycache__/
 
 # Variables de entorno (CRITICO: nunca subir credenciales)
 .env
-
-# Otros
-.DS_Store
