@@ -75,7 +75,7 @@ def crear_pago(
     "failure": f"{FRONTEND_URL}/pago/fallido",
     "pending": f"{FRONTEND_URL}/pago/pendiente"
 }
-      #  "auto_return": "approved"
+        "auto_return": "approved"
     }
 
     try:
